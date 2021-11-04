@@ -61,10 +61,6 @@
 #include "ff.h"
 /* USER CODE END */
 #include "diskio.h"
-FATFS Fatfs;
-FIL fil;
-FRESULT res;
-FILINFO fno;
 
 #if _USE_LFN
 static char lfn[_MAX_LFN + 1];
@@ -85,51 +81,13 @@ fno.lfsize = sizeof(lfn);
 //void showdata4(struct cell c,float vPack,float iPack,float zAvg,float TempPack, float PCap);
 //void showdata4(struct cell c[],float vPack,float iPack,float zAvg,float TempPack, float PCap);
 //*Number of cells connected in Series & Parallel and Temp. Sensors
-#define noSCell 8
-#define noPCell 7
-#define noTemp 8
 
-struct cell{
-    float voltage;
-    float current;
-    float z;
-    float temp;
-    float Capacity;
-};
-struct cell c[8];
-
-float zAvg= 1.0 ;
-float vPack=2.0;
-float iPack=3.0;
-float iref;
-float TempPack=4.0;
-float PCap;
-float zMin;
-int i,m;
-
-#pragma SET_DATA_SECTION("SD_RDATA_SECTION")
-int SD_Test(void);
-/* USER CODE BEGIN (2) */
-/* USER CODE END */
-
-
-void showdata4(struct cell c[],float vPack, float iPack, float zAvg, float TempPack, float PCap){
-                      int i;
-             //     printf("%f\t%f\t%f\t%f\t%f\t",zAvg*100,vPack,iPack,TempPack,PCap);
-                   f_printf(&fil,"%f\t%f\t%f\t%f\t",zAvg*100,vPack,iPack,TempPack);
-                //   printf("\t");
-                  for(i = 0; i < noSCell; i++){
-                       f_printf(&fil,"%f\t",c[i].voltage);// c is structure voltage data
-                       }
-                //   printf("\t\t");
-                   for(i = 0; i < noSCell; i++){
-                     f_printf(&fil,"%f\t",c[i].z*100);
-                     }
-                //   printf("\t\t");
-                    for(i = 0; i < noTemp; i++){
-                        f_printf(&fil,"%f\t ",c[i].temp);
-                   }
-              }
+long fileNum = 10000;  // maximum 99999
+char name[13];
+FATFS Fatfs;
+FRESULT res;
+FILINFO fno;
+FIL fsrc;
 
 
 int main(void)
@@ -162,100 +120,95 @@ char filename[16]; // enough space for characters and terminating NUL
         mmcSelectSpi(spiPORT2, spiREG2);  // SD card is on the SPI2
    //   SD_Test();
 
-      f_mount(&Fatfs, "", 3);     /* Give a work area to the default drive */
+   //   f_mount(&Fatfs, "", 3);     /* Give a work area to the default drive */
 
 
-      sprintf(fr, "xyz_%d.txt", GetNextIndex("") );
+   //   sprintf(fr, "xyz_%d.txt", GetNextIndex("") );
 
-      fr = f_open(&fil,"xyz_%d.txt", FA_WRITE | FA_CREATE_ALWAYS);  /* Create a file */
-      fr = open_append(&fil, "xyz_%d.txt");
+ //     fr = f_open(&fil,"xyz_%d.txt", FA_WRITE | FA_CREATE_ALWAYS);  /* Create a file */
 
-//      sprintf(fr, "%03d.txt", GetNextIndex("""") );
-      if (fr != FR_OK) {
-        //    f_write(&fil, "It works!\r\n", 11, &bw);    /* Write data to the file */
-        //   fr = f_close(&fil);                         /* Close the file */
-              while(1);
-            }
-      if (! f_size(&fil)) {
-                int i;
-                fr = f_printf(&fil, "BMS INITIALIZ...........\n");
-                fr = f_printf(&fil, "Battery Initial Status:\n");
-                fr = f_printf(&fil, "Battery Pack Status\t\t\t\t\t\t\t\tSeries cell's Voltages\t\t\t\t\t\t\t\t\t\t\t\t\t\tSeries cell's SOC\t\t\t\t\t\t\t\t\t\t\t\t\t\tTemperature Sensors data\t\t\t\t\t\t\t\t\t\t\t Balancing Cell ID\n");
-
-                for(i = 0; i < noSCell; i++){
-                    f_printf(&fil,"%d\t\t",i+1);  //
-                     }
-
-               //   printf("Cell_SOC:\t");
-                  for(i = 0; i < noSCell; i++){
-                      f_printf(&fil,"%d\t\t",i+1);
-                     }
-
-               //   printf("Temp_Sensors:\t");
-                  for(i = 0; i < noTemp; i++){
-                      f_printf(&fil,"%d\t\t",i+1);
-                     }
-
-                  for(i = 0; i < noSCell; i++){
-                      f_printf(&fil,"%d\t",i+1);
-
-
-            //    f_printf("BMS INITIALIZ...........\n");
-            //    f_printf("Battery Initial Status:\n");
-            //    f_printf("Battery Pack Status\t\t\t\t\t\t\t\tSeries cell's Voltages\t\t\t\t\t\t\t\t\t\t\t\t\t\tSeries cell's SOC\t\t\t\t\t\t\t\t\t\t\t\t\t\tTemperature Sensors data\t\t\t\t\t\t\t\t\t\t\tBalancing Cell ID\n");
-                  }
-              if (fr <0) {
-                  /* Error. Cannot write header */
-                  while(1);
-              }
-            }
-
-      while(1){
-
-      //     fr = f_printf(&fil, "%08u;%08u;%08u\n", 1, 2, 3);
-          fr = open_append(&fil, "xyz_%d.txt");
-           showdata4(c,vPack,iPack,zAvg,TempPack, PCap);
-
-         }
-           if (fr < FR_OK) {
-               /* Error. Cannot log data */
-               while(1);
-           }
-
-           /* Close the file */
-                fr = f_close(&fil);
-                if (fr != FR_OK)
-                {
-                  /* Error. Cannot close the file */
-                  while(1);
-                }
-
-
-
+      incFileNum(); // set it to dat10000.txt
+      if((res == FR_OK) || (res == FR_EXIST))
+      incFileNum();
+   //   Serial.println("new file name: " + String(name));
+      save(name);
 
      // while(1);
 
 }
 
 
-int GetNextIndex(char *path)
-{
-DIR dir;
-FILINFO fno;
-int i, index = -1;
-if (f_opendir(&dir, path) == FR_OK)
-{
-while(1)
-{
-if ((f_readdir(&dir, &fno) != FR_OK) || (fno.fname[0] == 0))
-break;
-if ((strstr(fno.fname, ".txt") != NULL) && (sscanf(fno.fname, "%d", &i) == 1))
-if (i > index) index = i;
-}
-}
-return(index + 1);
+void incFileNum() { // generate next file name:
+
+    int i; // string filename ;
+        for (i = 0; i < fileNum; ++i) {
+            int ret  = snprintf(name, 13, "sachin_%d.txt", i);
+            // sprintf(buf,"sachin_%d.txt", i);
+            if (ret < 0 || ret >= 13) {
+                fprintf(stderr, "snprintf: error at iteration %d: return value was %d\n", i, ret);
+                exit(1);
+            }
+
 }
 
+}
+
+void save(char *name)
+
+{
+    int nStatus;
+        //
+        // Mount the file system, using logical disk 0.
+         res = f_mount(&Fatfs, "", FS_FAT32);
+       // iFResult = f_mount(0, &g_sFatFs);
+        if(res != FR_OK)
+        {
+     //       UARTprintf("f_mount error: %s\n", StringFromFResult(iFResult));
+            return(1);
+        }
+
+
+
+          /* Open  the file for append */
+          res = f_open(&fsrc,name, FA_WRITE | FA_CREATE_ALWAYS);  /* Create a file */
+          res = open_append(&fsrc, name);
+
+
+          if (res != FR_OK) {
+              /* Error. Cannot create the file */
+              while(1);
+          }
+
+          // if file empty, write header
+          if (! f_size(&fsrc)) {
+
+              res = f_printf(&fsrc,name);
+
+
+            if (res <0) {
+                /* Error. Cannot write header */
+                while(1);
+            }
+          }
+
+        while(1){
+        }
+          if (res < FR_OK) {
+              /* Error. Cannot log data */
+              while(1);
+          }
+
+          /* Close the file */
+          res = f_close(&fsrc);
+          if (res != FR_OK)
+          {
+            /* Error. Cannot close the file */
+            while(1);
+          }
+
+
+
+}
 
 //void loop() {
   // save new integer every loop and then wait 1s
